@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+client_secret.json
+token.pickle
+browser_context/
+/tmp/
+.DS_Store
