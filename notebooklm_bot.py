@@ -137,19 +137,30 @@ class NotebookLMBot:
                 time.sleep(10)
                 
                 # 3. Click "Infografía"
-                # This button usually appears in the "Guide" or "Resumen" area
-                print("Looking for 'Infografía' button...")
-                try:
-                    # It might need some time to appear if it depends on source analysis
-                    # We'll try to find it with a timeout
-                    page.get_by_text("Infografía", exact=False).click(timeout=10000)
-                    print("Clicked 'Infografía'")
-                except:
-                    print("Could not find or click 'Infografía' button.")
-                    # It's possible it's under a menu or needs more time.
-                    # For now, we log the error but don't fail the whole process
-                    pass
+                # The button appears after the source is fully processed. This varies by video length.
+                print("Waiting for 'Infografía' button to appear...")
                 
+                # Retry loop for up to 30 seconds
+                for i in range(6):
+                    try:
+                        print(f"Attempt {i+1}/6 to find 'Infografía'...")
+                        # Look for button with text "Infografía" or "Infographic"
+                        # Use first to avoid ambiguity if multiple exist
+                        page.get_by_text("Infografía", exact=False).first.click(timeout=5000)
+                        print("Clicked 'Infografía' successfully.")
+                        break
+                    except:
+                        if i < 5:
+                            print("Button not found yet, waiting 5s...")
+                            time.sleep(5)
+                        else:
+                            print("Could not find or click 'Infografía' button after 30s.")
+                            # We don't fail the whole process, just log it.
+                            pass
+                
+                # Optional: Wait a bit to ensure the click registered
+                time.sleep(2)
+
                 return True
 
             except Exception as e:
