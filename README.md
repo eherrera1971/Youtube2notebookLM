@@ -62,6 +62,27 @@ The script will:
     - Click "Infografía" (if available).
     - Remove the video from the YouTube playlist.
 
+## Scheduling (Runs every 2 hours)
+
+To run this automatically every 2 hours, you can use `cron`. But remember: **The Chrome window from Step 1 must be open**.
+
+1.  Make the helper script executable:
+    ```bash
+    chmod +x run_task.sh
+    ```
+
+2.  Open your crontab:
+    ```bash
+    crontab -e
+    ```
+
+3.  Add this line to the end of the file:
+    ```cron
+    0 */2 * * * /Users/eherrera/Proyectos/Y2NLM/run_task.sh
+    ```
+
+    *This will try to run the script every 2 hours at minute 0.*
+
 ## Troubleshooting
 
 -   **"Connection Refused"**: Ensure you ran the `open ...` command in Step 1 and the window is still open.
