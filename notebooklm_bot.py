@@ -44,7 +44,7 @@ class NotebookLMBot:
                 # 1. Create New Notebook
                 print("Creating new notebook...")
                 # Button labels to try
-                labels = ["New Notebook", "Nuevo cuaderno", "Crear cuaderno", "New notebook", "Nuevo"]
+                labels = [ "Crear cuaderno", "New notebook", "Nuevo","New Notebook", "Nuevo cuaderno"]
                 
                 clicked = False
                 for label in labels:
@@ -146,7 +146,7 @@ class NotebookLMBot:
                         print(f"Attempt {i+1}/6 to find 'Infografía'...")
                         # Look for button with text "Infografía" or "Infographic"
                         # Use first to avoid ambiguity if multiple exist
-                        page.get_by_text("Infografía", exact=False).first.click(timeout=5000)
+                        page.get_by_text("Infograf", exact=False).first.click(timeout=5000)
                         print("Clicked 'Infografía' successfully.")
                         break
                     except:
