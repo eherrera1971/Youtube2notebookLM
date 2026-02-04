@@ -133,8 +133,22 @@ class NotebookLMBot:
                 
                 # Wait for processing?
                 # Usually it takes a few seconds. We can verify if the source appears in list.
-                print("Source added (hopefully). Waiting 5s for stability...")
-                time.sleep(5)
+                print("Source added (hopefully). Waiting 10s for stability/processing...")
+                time.sleep(10)
+                
+                # 3. Click "Infografía"
+                # This button usually appears in the "Guide" or "Resumen" area
+                print("Looking for 'Infografía' button...")
+                try:
+                    # It might need some time to appear if it depends on source analysis
+                    # We'll try to find it with a timeout
+                    page.get_by_text("Infografía", exact=False).click(timeout=10000)
+                    print("Clicked 'Infografía'")
+                except:
+                    print("Could not find or click 'Infografía' button.")
+                    # It's possible it's under a menu or needs more time.
+                    # For now, we log the error but don't fail the whole process
+                    pass
                 
                 return True
 
