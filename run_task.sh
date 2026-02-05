@@ -8,13 +8,13 @@ LOG_FILE="$PROJECT_DIR/automation.log"
 cd "$PROJECT_DIR" || exit 1
 
 # Activate virtual environment (optional if calling python directly, but good practice)
-source venv/bin/activate
+source .venv/bin/activate
 
 # Timestamp
 echo "--- Starting run at $(date) ---" >> "$LOG_FILE"
 
 # Run the script
 # We filter grep/awk noise if any, or just capture all output
-./venv/bin/python main.py >> "$LOG_FILE" 2>&1
+./.venv/bin/python main.py >> "$LOG_FILE" 2>&1
 
 echo "--- Finished run at $(date) ---" >> "$LOG_FILE"

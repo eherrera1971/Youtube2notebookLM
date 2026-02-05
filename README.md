@@ -18,8 +18,8 @@ This tool automates the process of adding videos from your "Celeste" YouTube pla
 ## Installation
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 playwright install
 ```
@@ -30,11 +30,13 @@ Because Google blocks automated browsers (appearing as "This browser is not secu
 
 ### Step 1: Open Chrome for Automation
 
-Run this command in your terminal to open a special Chrome window listening for automation:
+Run the helper script:
 
 ```bash
-open -na "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir="/tmp/chrome_dev_profile" --no-first-run
+./launch_chrome.sh
 ```
+
+*This will open a new Chrome window with remote debugging enabled (port 9222).*
 
 ### Step 2: Log In
 
@@ -48,7 +50,7 @@ In the Chrome window that opens:
 In your terminal (in the project folder), run:
 
 ```bash
-./venv/bin/python main.py
+./.venv/bin/python main.py
 ```
 
 ### Step 4: Watch it Go

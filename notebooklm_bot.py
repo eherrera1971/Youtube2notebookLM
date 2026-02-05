@@ -13,14 +13,20 @@ class NotebookLMBot:
             # browser = p.chromium.launch(headless=self.headless)
             # Use launch_persistent_context to keep cookies/login
             # Try to connect to an existing Chrome instance on port 9222
+            browser = None
+            context = None
+            page = None
+
             try:
                 print("Connecting to existing Chrome instance on port 9222...")
                 browser = p.chromium.connect_over_cdp("http://127.0.0.1:9222")
                 context = browser.contexts[0]
                 page = context.new_page()
             except Exception as e:
-                print(f"Could not connect to Chrome: {e}")
-                print("Please make sure Chrome is running with --remote-debugging-port=9222")
+                print(f"Could not connect to Chrome on port 9222: {e}")
+                print("\nCRITICAL ERROR: Could not connect to the manual Chrome window.")
+                print("Please ensure you have run './launch_chrome.sh' and kept the window OPEN.")
+                print("We cannot use a new automated browser instance because Google blocks it.")
                 return False
             
             try:

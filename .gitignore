@@ -7,3 +7,4 @@ token.pickle
 browser_context/
 /tmp/
 .DS_Store
+chrome_manual_profile/
