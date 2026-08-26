@@ -8,3 +8,10 @@ browser_context/
 /tmp/
 .DS_Store
 chrome_manual_profile/
+.env
+automation.log
+*.log
+notebook_debug.*
+.seq_counter
+automation.log.*
+.venvs/

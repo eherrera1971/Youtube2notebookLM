@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(./.venv/bin/python:*)",
+      "Bash(crontab:*)",
+      "Bash(ls:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/pip show:*)",
+      "Bash(.venv/bin/pip list:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(rm -rf .venv)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(./.venv/bin/pip list *)",
+      "Read(//usr/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(/usr/bin/python3 --version)",
+      "Bash(brew list *)",
+      "Bash(brew --version)",
+      "Bash(brew install *)",
+      "Bash(rm -rf /Users/eherrera/Documents/Proyectos/Y2Obsidian/.venv)",
+      "Bash(uv venv *)",
+      "Bash(uv pip *)",
+      "Bash(./run_task.sh)",
+      "Read(//Users/eherrera/**)",
+      "Bash(chmod +x /Users/eherrera/Documents/Proyectos/Y2Obsidian/bin/run)",
+      "Bash(direnv allow *)"
+    ]
+  }
+}
