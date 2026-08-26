@@ -8,6 +8,8 @@ import googleapiclient.discovery
 import googleapiclient.errors
 from google.auth.transport.requests import Request
 
+from env_loader import load_dotenv
+
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
@@ -41,7 +43,10 @@ class YouTubeManager:
                 except Exception as e:
                     print(f"Falló la renovación del token: {e}")
                     print("Se borra el token vencido y se re-autentica...")
-                    os.remove(self.token_path)
+                    try:
+                        os.remove(self.token_path)
+                    except OSError:
+                        pass
                     creds = None
 
             if creds is None or not creds.valid:
@@ -147,9 +152,10 @@ class YouTubeManager:
 
 if __name__ == "__main__":
     # Prueba rápida
+    load_dotenv()
     try:
         yt = YouTubeManager()
-        videos = yt.get_playlist_videos()
+        videos = yt.get_playlist_videos(os.environ.get("YOUTUBE_PLAYLIST", "Celeste"))
         print(f"Encontrados {len(videos)} videos.")
         for v in videos:
             print(f"- {v['title']}")

@@ -3,6 +3,12 @@ import os
 import anthropic
 from youtube_transcript_api import YouTubeTranscriptApi
 
+from env_loader import load_dotenv
+
+# Antes de leer las constantes de abajo: si el módulo se ejecuta suelto
+# nadie más habrá cargado el .env.
+load_dotenv()
+
 # Modelo configurable. Opus 5 es el más capaz: en pruebas sobre transcripciones
 # reales conserva más detalle y matices que Sonnet, por ~$0.11 por video.
 # Alternativa más barata: claude-sonnet-5 (~$0.03 por video).
@@ -30,17 +36,18 @@ class TranscriptSummarizer:
                 "en .env o pásala al constructor."
             )
         self.model = model or DEFAULT_MODEL
+        self.effort = EFFORT
         # max_retries cubre 429 y errores 5xx con backoff exponencial.
         self.client = anthropic.Anthropic(
             api_key=self.api_key, max_retries=4, timeout=300.0
         )
+        self.transcript_api = YouTubeTranscriptApi()
 
     def get_transcript(self, video_id, languages=("es", "en")):
         """Devuelve (texto, idioma) de la transcripción del video.
         Prueba español, luego inglés, luego cualquier idioma disponible."""
-        ytt_api = YouTubeTranscriptApi()
         try:
-            transcript_list = ytt_api.list(video_id)
+            transcript_list = self.transcript_api.list(video_id)
 
             # Idiomas preferidos primero
             for lang in languages:
@@ -71,23 +78,21 @@ class TranscriptSummarizer:
             return None, None
 
     def _ask_claude(self, prompt, max_tokens=8000):
-        kwargs = {}
-        if EFFORT:
-            kwargs["output_config"] = {"effort": EFFORT}
         try:
-            response = self._create(prompt, max_tokens, **kwargs)
-            return "".join(b.text for b in response.content if b.type == "text")
+            return self._create(prompt, max_tokens)
         except anthropic.BadRequestError as e:
-            # Un modelo antiguo puede rechazar output_config: reintentar sin él.
-            if kwargs:
-                print(f"  El modelo no acepta 'effort' ({e.message}); reintentando sin él.")
-                try:
-                    response = self._create(prompt, max_tokens)
-                    return "".join(b.text for b in response.content if b.type == "text")
-                except Exception as e2:
-                    print(f"  Error de la API de Claude: {e2}")
-                    return None
-            print(f"  Petición inválida a la API de Claude: {e.message}")
+            if not self.effort:
+                print(f"  Petición inválida a la API de Claude: {e.message}")
+                return None
+            # Un modelo antiguo puede rechazar output_config. Se desactiva
+            # para toda la sesión: si no, una transcripción larga pagaría
+            # el reintento en cada uno de sus trozos.
+            print(f"  El modelo no acepta 'effort' ({e.message}); se desactiva y se reintenta.")
+            self.effort = ""
+            try:
+                return self._create(prompt, max_tokens)
+            except Exception as e2:
+                print(f"  Error de la API de Claude: {e2}")
         except anthropic.APIStatusError as e:
             print(f"  Error de la API de Claude ({e.status_code}): {e.message}")
         except anthropic.APIConnectionError as e:
@@ -96,16 +101,19 @@ class TranscriptSummarizer:
             print(f"  Error inesperado llamando a Claude: {e}")
         return None
 
-    def _create(self, prompt, max_tokens, **kwargs):
-        """Una llamada a la API. Se usa streaming porque con max_tokens alto
-        una petición normal puede exceder el timeout HTTP."""
+    def _create(self, prompt, max_tokens):
+        """Una llamada a la API, devuelta ya como texto. Se usa streaming
+        porque con max_tokens alto una petición normal puede exceder el
+        timeout HTTP."""
+        kwargs = {"output_config": {"effort": self.effort}} if self.effort else {}
         with self.client.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
             **kwargs,
         ) as stream:
-            return stream.get_final_message()
+            response = stream.get_final_message()
+        return "".join(b.text for b in response.content if b.type == "text")
 
     def _summary_prompt(self, transcript_text, video_title, video_url):
         return f"""Analiza la siguiente transcripción de un video de YouTube y genera un resumen estructurado en español.
@@ -195,7 +203,7 @@ No escribas introducción ni conclusiones: solo las ideas.
             return None
 
         print(f"  Transcripción obtenida ({lang}, {len(transcript)} caracteres)")
-        print(f"  Resumiendo con Claude ({self.model}, effort={EFFORT or 'default'})...")
+        print(f"  Resumiendo con Claude ({self.model}, effort={self.effort or 'default'})...")
 
         summary = self.summarize(transcript, video_title, video_url)
         if not summary:

@@ -2,11 +2,13 @@ import os
 import re
 from datetime import datetime
 
+from env_loader import load_dotenv
+
 
 class ObsidianWriter:
     """Creates structured Markdown notes in an Obsidian vault."""
 
-    def __init__(self, vault_path, subfolder="Remoto/0 Inbox"):
+    def __init__(self, vault_path, subfolder="4 YoutubeCeleste"):
         self.vault_path = vault_path
         self.notes_dir = os.path.join(vault_path, subfolder)
         os.makedirs(self.notes_dir, exist_ok=True)
@@ -16,20 +18,26 @@ class ObsidianWriter:
             os.path.dirname(os.path.abspath(__file__)), ".seq_counter"
         )
 
-    def _next_sequence_number(self):
-        """Read, increment and persist the global note counter."""
+    def _peek_sequence_number(self):
+        """Siguiente número de la secuencia, sin consumirlo todavía."""
         try:
             with open(self.counter_path, "r", encoding="utf-8") as f:
                 current = int(f.read().strip() or "0")
         except (FileNotFoundError, ValueError):
             current = 0
-        nxt = current + 1
+        return current + 1
+
+    def _commit_sequence_number(self, seq):
+        """Persiste el número una vez que la nota quedó escrita.
+
+        Se separa de _peek_sequence_number para que una escritura fallida
+        no deje un hueco permanente en la numeración.
+        """
         try:
             with open(self.counter_path, "w", encoding="utf-8") as f:
-                f.write(str(nxt))
+                f.write(str(seq))
         except Exception as e:
             print(f"  Aviso: no se pudo guardar el contador de secuencia: {e}")
-        return nxt
 
     def _sanitize_filename(self, title):
         """Remove characters that are problematic in filenames."""
@@ -54,7 +62,7 @@ class ObsidianWriter:
             Path to the created note, or None on failure.
         """
         today = datetime.now().strftime("%Y-%m-%d")
-        seq = self._next_sequence_number()
+        seq = self._peek_sequence_number()
         base_name = f"{seq:04d} {self._sanitize_filename(video_title)}"
         filepath = os.path.join(self.notes_dir, f"{base_name}.md")
 
@@ -108,6 +116,7 @@ class ObsidianWriter:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(content)
             os.replace(tmp_path, filepath)
+            self._commit_sequence_number(seq)
             print(f"  Nota guardada: {filepath}")
             return filepath
         except Exception as e:
@@ -119,9 +128,10 @@ class ObsidianWriter:
 
 if __name__ == "__main__":
     # Quick test
+    load_dotenv()
     writer = ObsidianWriter(
-        vault_path=os.path.expanduser("~/Obsidian"),
-        subfolder="Remoto/0 Inbox",
+        vault_path=os.path.expanduser(os.environ.get("OBSIDIAN_VAULT", "~/Remoto")),
+        subfolder=os.environ.get("OBSIDIAN_SUBFOLDER", "4 YoutubeCeleste"),
     )
     path = writer.create_note(
         video_title="Test Video - Conceptos de IA",

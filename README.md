@@ -80,10 +80,15 @@ notas se escriben una vez pero se releen muchas. Si procesas gran volumen,
 
 ## Arquitectura
 
-Cuatro módulos, cada uno ejecutable por separado para probarlo:
+Cinco módulos, cada uno ejecutable por separado para probarlo (cada uno carga
+el `.env` por su cuenta, así que correr uno suelto funciona):
 
+- **`env_loader.py`** — Lee el `.env` sin depender de paquetes externos. Acepta
+  `export VAR=`, comentarios al final de la línea y valores entre comillas, y
+  nunca pisa lo que ya venga del entorno.
 - **`main.py`** — Orquesta el flujo y valida la configuración antes de empezar
-  (preflight). Devuelve exit code distinto de 0 si algo falló.
+  (preflight: credenciales, bóveda y permiso de escritura en la carpeta destino).
+  Devuelve exit code distinto de 0 si algo falló.
 - **`youtube_manager.py`** — YouTube Data API v3: OAuth, listar la playlist
   (omite videos privados o borrados) y eliminar items.
 - **`transcript_summarizer.py`** — Baja la transcripción (español → inglés →
@@ -91,7 +96,8 @@ Cuatro módulos, cada uno ejecutable por separado para probarlo:
   procesan por partes y luego se consolidan, en vez de recortarse.
 - **`obsidian_writer.py`** — Escribe la nota Markdown con frontmatter YAML,
   miniatura del video y el resumen. Numera las notas con un contador persistente
-  (`.seq_counter`) y nunca sobreescribe una nota existente.
+  (`.seq_counter`), que solo avanza cuando la nota quedó escrita, y nunca
+  sobreescribe una nota existente.
 
 ## Notas
 

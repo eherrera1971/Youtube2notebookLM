@@ -2,26 +2,7 @@ import argparse
 import os
 import sys
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-
-def load_dotenv(path=None):
-    """Carga variables desde .env sin depender de paquetes externos.
-    No sobreescribe variables ya definidas en el entorno."""
-    path = path or os.path.join(BASE_DIR, ".env")
-    if not os.path.exists(path):
-        return
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
-
+from env_loader import BASE_DIR, load_dotenv
 
 load_dotenv()
 
@@ -77,6 +58,18 @@ def preflight():
             f"No existe la bóveda de Obsidian en {vault} — "
             "ajusta OBSIDIAN_VAULT en .env."
         )
+    else:
+        # Comprobar que se puede escribir ahora, y no después de haber
+        # gastado tokens resumiendo un video que no se podrá guardar.
+        notes_dir = os.path.join(vault, OBSIDIAN_SUBFOLDER)
+        try:
+            os.makedirs(notes_dir, exist_ok=True)
+            probe = os.path.join(notes_dir, ".escritura_ok")
+            with open(probe, "w", encoding="utf-8"):
+                pass
+            os.remove(probe)
+        except OSError as e:
+            errors.append(f"No se puede escribir en {notes_dir}: {e}")
     return errors
 
 

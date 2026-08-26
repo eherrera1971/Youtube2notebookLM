@@ -28,18 +28,21 @@ Do not create a `.venv` inside the project — that's what the iCloud note above
 
 ## Architecture
 
-Four modules, each independently runnable for testing:
+Five modules, each independently runnable for testing (every module that needs config calls `load_dotenv()` itself, so running one alone works):
 
-- **`main.py`** — Entry point. Parses CLI flags, loads `.env` (dependency-free loader — no `python-dotenv`), runs a preflight check on credentials and vault path, then orchestrates: fetch playlist → transcript → summarize → write note → remove from playlist. Non-zero exit code when any video failed, so cron/WhatsApp notification triggers.
+- **`env_loader.py`** — Dependency-free `.env` loader (no `python-dotenv`). Tolerates `export VAR=`, inline `#` comments and quoted values, never overrides what's already in the environment, and is idempotent.
+
+- **`main.py`** — Entry point. Parses CLI flags, loads `.env`, runs a preflight check on credentials, vault path and *write access to the notes folder* (fails before spending Claude tokens), then orchestrates: fetch playlist → transcript → summarize → write note → remove from playlist. Non-zero exit code when any video failed, so cron/WhatsApp notification triggers.
 
 - **`youtube_manager.py`** — Wraps YouTube Data API v3. OAuth2 with absolute paths derived from `base_dir` (must work from any cwd under cron). `get_playlist_videos(name)` paginates over both playlists and items and skips private/deleted videos. Raises a clear error instead of hanging when OAuth is needed with no TTY.
 
-- **`transcript_summarizer.py`** — Fetches transcripts via `youtube-transcript-api` (Spanish → English → translated → any). Summarizes with Claude via streaming (`output_config.effort`, with an automatic retry without it for models that reject the param). Transcripts over `CHUNK_THRESHOLD_CHARS` are map-reduced (chunk summaries → consolidation) rather than truncated.
+- **`transcript_summarizer.py`** — Fetches transcripts via `youtube-transcript-api` (Spanish → English → translated → any). Summarizes with Claude via streaming (`output_config.effort`; if the model rejects the param it is disabled for the whole session, not retried per chunk). Transcripts over `CHUNK_THRESHOLD_CHARS` are map-reduced (chunk summaries → consolidation) rather than truncated.
 
-- **`obsidian_writer.py`** — Writes Markdown notes with YAML frontmatter, thumbnail link and summary. Notes are numbered from a persistent counter (`.seq_counter`) so the sequence survives notes being moved out of the folder. Writes atomically via a `.tmp` file and never overwrites an existing note.
+- **`obsidian_writer.py`** — Writes Markdown notes with YAML frontmatter, thumbnail link and summary. Notes are numbered from a persistent counter (`.seq_counter`) so the sequence survives notes being moved out of the folder; the counter is only advanced *after* the file lands, so a failed write leaves no gap. Writes atomically via a `.tmp` file and never overwrites an existing note.
 
 ## Key Constraints
 
 - **Google OAuth token expiry** — If the Google Cloud project is in "Testing" mode, refresh tokens expire after 7 days and re-auth needs a browser. Cron runs fail fast with a clear message; `./bin/run --check` renews interactively.
 - **No transcript → no note** — The video stays in the playlist to be retried on the next run.
+- **Dependencies are capped at the current major** in `requirements.txt` — the job runs unattended, so a new major must not slip in on its own.
 - **Summaries are in Spanish** — The Claude prompt instructs output in Spanish regardless of transcript language.

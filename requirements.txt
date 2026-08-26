@@ -1,4 +1,13 @@
-google-api-python-client>=2.100
-google-auth-oauthlib>=1.2
-youtube-transcript-api>=1.0
-anthropic>=0.40
+# Cotas superiores a propósito: el proyecto corre desatendido desde cron,
+# así que un major nuevo no debe entrar solo y romper la corrida nocturna.
+
+# API de YouTube (listar playlist, borrar items)
+google-api-python-client>=2.100,<3
+google-auth-oauthlib>=1.2,<2
+
+# Transcripciones. La 1.x cambió la API (list/fetch con objetos snippet),
+# que es justo la que usa transcript_summarizer.
+youtube-transcript-api>=1.0,<2
+
+# Cliente de Claude. La 1.x es la que soporta output_config.effort.
+anthropic>=1.0,<2
