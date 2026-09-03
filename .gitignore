@@ -1,9 +1,24 @@
+# Entorno y dependencias
 __pycache__/
 *.pyc
 venv/
 .venv/
+.venvs/
+
+# Secretos y credenciales
+.env
 client_secret.json
 token.pickle
-browser_context/
-/tmp/
+
+# Estado local en runtime
+automation.log
+automation.log.*
+*.log
+.seq_counter
+
+# Config personal de Claude Code (los worktrees son temporales)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Sistema
 .DS_Store

@@ -1,89 +1,107 @@
-# YouTube to NotebookLM Automation
+# Y2Obsidian — De YouTube a Obsidian
 
-This tool automates the process of adding videos from your "Celeste" YouTube playlist to NotebookLM as sources, and then removing them from the playlist.
+Procesa los videos de una playlist de YouTube (por defecto **"Celeste"**): baja la
+transcripción, la resume con Claude, crea una nota estructurada en Obsidian y
+saca el video de la playlist.
 
-## Features
-
--   **YouTube Integration**: Automatically fetches videos from a specific playlist ("Celeste").
--   **NotebookLM Automation**: Uses Playwright (connected to an existing Chrome instance) to create notebooks and add sources.
--   **Cleanup**: Removes the video from the YouTube playlist after successful addition.
--   **Infographic**: Tries to click the "Infografía" button after processing.
-
-## Prerequisites
-
-1.  **Python Environment**: Ensure you have Python 3 installed.
-2.  **Google Chrome**: You must have Google Chrome installed.
-3.  **Credentials**: `client_secret.json` must be in the project root (for YouTube API).
-
-## Installation
+## Uso
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-playwright install
+./bin/run
 ```
 
-## How to Run
+Eso es todo. El script se encarga solo de:
 
-Because Google blocks automated browsers (appearing as "This browser is not secure"), we use a special method connecting to an existing Chrome window.
+1. Crear el entorno virtual si no existe (en `~/.venvs/Y2Obsidian`, fuera de iCloud).
+2. Instalar/actualizar las dependencias cuando `requirements.txt` cambia.
+3. Cargar las variables de `.env`.
+4. Procesar la playlist y escribir el log en `automation.log` (rota al llegar a 1 MB).
 
-### Step 1: Open Chrome for Automation
+### Opciones
 
-Run this command in your terminal to open a special Chrome window listening for automation:
+| Comando | Qué hace |
+|---|---|
+| `./bin/run` | Procesa todos los videos pendientes |
+| `./bin/run --check` | Verifica credenciales y muestra cuántos videos hay pendientes |
+| `./bin/run --dry-run` | Lista los videos sin crear notas ni tocar la playlist |
+| `./bin/run --limit 2` | Procesa como máximo 2 videos |
+| `./bin/run --keep` | Crea las notas pero deja los videos en la playlist |
+
+## Configuración inicial
+
+1. **Credenciales de YouTube**: coloca `client_secret.json` (Google Cloud Console)
+   en la raíz del proyecto. La primera ejecución abre el navegador para autorizar
+   y guarda el token en `token.pickle`.
+
+2. **Variables de entorno**: copia `.env.example` a `.env` y completa
+   `ANTHROPIC_API_KEY`. Las demás variables son opcionales:
+
+   | Variable | Por defecto | Para qué |
+   |---|---|---|
+   | `ANTHROPIC_API_KEY` | — | **Obligatoria.** API key de Anthropic |
+   | `ANTHROPIC_MODEL` | `claude-opus-5` | Modelo usado para resumir |
+   | `ANTHROPIC_EFFORT` | `medium` | Profundidad de razonamiento (`low`…`max`) |
+   | `OBSIDIAN_VAULT` | `~/Remoto` | Ruta de la bóveda de Obsidian |
+   | `OBSIDIAN_SUBFOLDER` | `4 YoutubeCeleste` | Carpeta destino dentro de la bóveda |
+   | `YOUTUBE_PLAYLIST` | `Celeste` | Playlist a procesar |
+   | `WHAPI_TOKEN` / `WHATSAPP_TO` | — | Aviso por WhatsApp si la corrida falla |
+
+## Ejecución automática (cron)
 
 ```bash
-open -na "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir="/tmp/chrome_dev_profile" --no-first-run
+crontab -e
 ```
 
-### Step 2: Log In
-
-In the Chrome window that opens:
-1.  Go to [notebooklm.google.com](https://notebooklm.google.com).
-2.  **Log in** with your Google account.
-3.  Ensure you can see your notebooks dashboard.
-
-### Step 3: Run the Script
-
-In your terminal (in the project folder), run:
-
-```bash
-./venv/bin/python main.py
+```cron
+0 */2 * * * /Users/eherrera/Documents/Proyectos/Y2Obsidian/bin/run >/dev/null 2>&1
 ```
 
-### Step 4: Watch it Go
+**Ojo con el token de Google**: si el proyecto de Google Cloud está en modo
+"Testing", el refresh token caduca cada 7 días y el flujo OAuth necesita un
+navegador. En ese caso la corrida por cron falla con un mensaje claro en vez de
+quedarse colgada, y basta con ejecutar `./bin/run --check` a mano para renovarlo.
+Para evitarlo del todo, publica la app en Google Cloud Console (estado "In production").
 
-The script will:
-1.  Connect to the Chrome window you opened.
-2.  Fetch videos from your "Celeste" playlist.
-3.  For each video:
-    - Create a new notebook.
-    - Add the video as a source.
-    - Click "Infografía" (if available).
-    - Remove the video from the YouTube playlist.
+## Elección del modelo
 
-## Scheduling (Runs every 2 hours)
+Medido sobre una transcripción real de 20.000 caracteres (entrevista en inglés,
+resumen en español):
 
-To run this automatically every 2 hours, you can use `cron`. But remember: **The Chrome window from Step 1 must be open**.
+| Modelo | Costo/video | Tiempo | Resultado |
+|---|---|---|---|
+| `claude-sonnet-4-6` | $0,043 | 42 s | El más breve en cobertura; se le coló una errata |
+| `claude-sonnet-5` | $0,034 | 22 s | Más barato y rápido que 4.6, y mejor escrito |
+| **`claude-opus-5`** | **$0,112** | 41 s | Conserva matices y ejemplos que los otros omiten |
 
-1.  Make the helper script executable:
-    ```bash
-    chmod +x run_task.sh
-    ```
+Se usa **Opus 5** por defecto: la diferencia es de ~7 centavos por video, y las
+notas se escriben una vez pero se releen muchas. Si procesas gran volumen,
+`claude-sonnet-5` es la alternativa sensata — es estrictamente mejor que el
+`claude-sonnet-4-6` que se usaba antes (más barato, más rápido y más limpio).
 
-2.  Open your crontab:
-    ```bash
-    crontab -e
-    ```
+## Arquitectura
 
-3.  Add this line to the end of the file:
-    ```cron
-    0 */2 * * * /Users/eherrera/Proyectos/Y2NLM/run_task.sh
-    ```
+Cinco módulos, cada uno ejecutable por separado para probarlo (cada uno carga
+el `.env` por su cuenta, así que correr uno suelto funciona):
 
-    *This will try to run the script every 2 hours at minute 0.*
+- **`env_loader.py`** — Lee el `.env` sin depender de paquetes externos. Acepta
+  `export VAR=`, comentarios al final de la línea y valores entre comillas, y
+  nunca pisa lo que ya venga del entorno.
+- **`main.py`** — Orquesta el flujo y valida la configuración antes de empezar
+  (preflight: credenciales, bóveda y permiso de escritura en la carpeta destino).
+  Devuelve exit code distinto de 0 si algo falló.
+- **`youtube_manager.py`** — YouTube Data API v3: OAuth, listar la playlist
+  (omite videos privados o borrados) y eliminar items.
+- **`transcript_summarizer.py`** — Baja la transcripción (español → inglés →
+  cualquier idioma) y la resume con Claude. Las transcripciones muy largas se
+  procesan por partes y luego se consolidan, en vez de recortarse.
+- **`obsidian_writer.py`** — Escribe la nota Markdown con frontmatter YAML,
+  miniatura del video y el resumen. Numera las notas con un contador persistente
+  (`.seq_counter`), que solo avanza cuando la nota quedó escrita, y nunca
+  sobreescribe una nota existente.
 
-## Troubleshooting
+## Notas
 
--   **"Connection Refused"**: Ensure you ran the `open ...` command in Step 1 and the window is still open.
--   **"Verification Required"**: If Google asks for verification during login, just complete it manually in the browser window.
+- Si un video no tiene transcripción, **no** se crea nota y el video se queda en
+  la playlist para reintentarlo en la siguiente corrida.
+- El log rota automáticamente: al pasar 1 MB, `automation.log` se mueve a
+  `automation.log.1`.
