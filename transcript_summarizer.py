@@ -122,6 +122,7 @@ class TranscriptSummarizer:
 **URL:** {video_url}
 
 **Instrucciones:**
+- No pongas título ni encabezado al principio: la nota ya lleva el título del video arriba. Empieza directamente con el párrafo de introducción
 - Escribe un párrafo breve de introducción que explique de qué trata el video
 - Lista los conceptos principales como bullet points claros y concisos
 - Cada bullet point debe ser autocontenido y fácil de entender
@@ -183,6 +184,7 @@ No escribas introducción ni conclusiones: solo las ideas.
 **URL:** {video_url}
 
 **Instrucciones:**
+- No pongas título ni encabezado al principio: la nota ya lleva el título del video arriba. Empieza directamente con el párrafo de introducción
 - Consolida las notas en un único resumen estructurado en español, sin repeticiones
 - Empieza con un párrafo breve de introducción sobre de qué trata el video
 - Organiza los conceptos principales como bullet points claros (usa sub-bullets si hace falta)

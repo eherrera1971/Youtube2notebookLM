@@ -1,6 +1,5 @@
 import os
 import re
-from datetime import datetime
 
 from env_loader import load_dotenv
 
@@ -39,6 +38,23 @@ class ObsidianWriter:
         except Exception as e:
             print(f"  Aviso: no se pudo guardar el contador de secuencia: {e}")
 
+    @staticmethod
+    def _strip_leading_title(summary):
+        """Quita el encabezado con el que el resumen abre, si lo trae.
+
+        El prompt pide no incluirlo, pero el modelo a veces lo agrega igual
+        y quedaría repitiendo el nombre del archivo.
+        """
+        texto = summary.lstrip()
+        if not texto.startswith("#"):
+            return texto
+        primera, _, resto = texto.partition("\n")
+        # Solo un H1: un H2 es una sección legítima del resumen
+        # ("## Introducción"); un H1 siempre repetiría el título de la nota.
+        if re.match(r"^# +\S", primera):
+            return resto.lstrip("\n")
+        return texto
+
     def _sanitize_filename(self, title):
         """Remove characters that are problematic in filenames."""
         # Remove or replace problematic chars
@@ -61,7 +77,6 @@ class ObsidianWriter:
         Returns:
             Path to the created note, or None on failure.
         """
-        today = datetime.now().strftime("%Y-%m-%d")
         seq = self._peek_sequence_number()
         base_name = f"{seq:04d} {self._sanitize_filename(video_title)}"
         filepath = os.path.join(self.notes_dir, f"{base_name}.md")
@@ -72,41 +87,26 @@ class ObsidianWriter:
             filepath = os.path.join(self.notes_dir, f"{base_name} ({dedup}).md")
             dedup += 1
 
-        # Build the note content
-        lines = []
-
-        # YAML frontmatter
-        lines.append("---")
-        lines.append(f"title: \"{video_title.replace(chr(34), chr(39))}\"")
-        lines.append("source: youtube")
-        lines.append(f"url: {video_url}")
-        lines.append(f"video_id: {video_id}")
-        lines.append(f"date: {today}")
-        lines.append("tags:")
-        lines.append("  - video")
-        lines.append("  - youtube")
-        lines.append("  - inbox")
-        lines.append("---")
-        lines.append("")
-
-        # Title
-        lines.append(f"# {video_title}")
-        lines.append("")
-
-        # Embed
-        lines.append(f"[![Video](https://img.youtube.com/vi/{video_id}/maxresdefault.jpg)]({video_url})")
-        lines.append("")
+        # Estructura: miniatura, resumen y la URL al final. Sin frontmatter
+        # (Obsidian lo muestra como "Propiedades") y sin título: el nombre
+        # del archivo ya lo es.
+        lines = [
+            f"![Video](https://img.youtube.com/vi/{video_id}/maxresdefault.jpg)",
+            "",
+        ]
 
         if summary:
-            lines.append(summary)
+            # El resumen suele abrir con su propio encabezado, que repetiría
+            # el nombre del archivo.
+            lines.append(self._strip_leading_title(summary))
         else:
             lines.append("## Resumen")
             lines.append("")
             lines.append("> No se pudo obtener la transcripción de este video.")
             lines.append("> Míralo directamente en YouTube para tomar notas.")
-            lines.append("")
-            lines.append(f"[Ver en YouTube]({video_url})")
 
+        lines.append("")
+        lines.append(video_url)
         lines.append("")
 
         content = "\n".join(lines)
